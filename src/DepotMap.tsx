@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -36,9 +36,17 @@ function LocationMarker({ onLocationSelect }: { onLocationSelect: (lat: number, 
 
 interface DepotMapProps {
   onLocationSelect: (lat: number, lng: number) => void;
+  dailyRange: number;
 }
 
-const DepotMap: React.FC<DepotMapProps> = ({ onLocationSelect }) => {
+const DepotMap: React.FC<DepotMapProps> = ({ onLocationSelect, dailyRange }) => {
+  const [depotPosition, setDepotPosition] = useState<[number, number] | null>(null);
+
+  const handleLocationSelect = (lat: number, lng: number) => {
+    setDepotPosition([lat, lng]);
+    onLocationSelect(lat, lng);
+  };
+
   return (
     <div style={{ height: '400px', width: '100%' }}>
       <MapContainer
@@ -50,7 +58,18 @@ const DepotMap: React.FC<DepotMapProps> = ({ onLocationSelect }) => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        <LocationMarker onLocationSelect={onLocationSelect} />
+        <LocationMarker onLocationSelect={handleLocationSelect} />
+        
+        {/* Range Circle - only show if depot is placed and range > 0 */}
+        {depotPosition && dailyRange > 0 && (
+          <Circle
+            center={depotPosition}
+            radius={dailyRange * 1000} // Convert km to meters
+            color="blue"
+            fillColor="lightblue"
+            fillOpacity={0.2}
+          />
+        )}
       </MapContainer>
     </div>
   );
