@@ -3,6 +3,7 @@ import './App.css';
 import DepotMap from './DepotMap';
 import VehicleInfo, { VehicleData } from './VehicleInfo';
 import ChargerSelection, { ChargerType } from './ChargerSelection';
+import ChargerLayout, { LayoutElement } from './ChargerLayout';
 
 function App() {
   const [depotLocation, setDepotLocation] = useState<{lat: number, lng: number} | null>(null);
@@ -79,6 +80,20 @@ function App() {
             onChargerSelect={handleChargerSelect}
           />
         </div>
+
+        {/* Only show layout designer if depot location and charger are selected */}
+        {depotLocation && selectedCharger && (
+          <div style={{ width: '80%', maxWidth: '800px' }}>
+            <ChargerLayout
+              depotLocation={depotLocation}
+              selectedCharger={selectedCharger}
+              vehicleQuantity={vehicleData.quantity}
+              onLayoutComplete={(elements, calculations) => {
+                console.log('Layout completed:', elements, calculations);
+              }}
+            />
+          </div>
+        )}
 
         {depotLocation && (
           <div style={{ marginTop: '20px', padding: '10px', border: '1px solid #ccc', borderRadius: '5px' }}>
