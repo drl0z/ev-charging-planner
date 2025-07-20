@@ -245,6 +245,7 @@ const ChargerLayout: React.FC<ChargerLayoutProps> = ({
           zoom={20}
           maxZoom={22}
           style={{ height: '100%', width: '100%' }}
+          key={`${depotLocation.lat}-${depotLocation.lng}`} // Force re-render when depot location changes
         >
           {/* High-resolution satellite imagery */}
           <TileLayer

@@ -50,13 +50,23 @@ const DepotMap: React.FC<DepotMapProps> = ({ onLocationSelect, dailyRange }) => 
   return (
     <div style={{ height: '400px', width: '100%' }}>
       <MapContainer
-        center={[51.505, -0.09]} // London coordinates
+        center={[53.4428, -2.2302]} // M20 2UR (Manchester) coordinates
         zoom={13}
         style={{ height: '100%', width: '100%' }}
       >
+        {/* Satellite imagery */}
         <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}"
+          attribution='&copy; Google'
+          maxZoom={20}
+        />
+        
+        {/* Optional: Add labels/roads overlay for better context */}
+        <TileLayer
+          url="https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}"
+          attribution='&copy; Google'
+          maxZoom={20}
+          opacity={0.3}
         />
         <LocationMarker onLocationSelect={handleLocationSelect} />
         

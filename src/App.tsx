@@ -1,109 +1,145 @@
 import React, { useState } from 'react';
 import './App.css';
-import DepotMap from './DepotMap';
-import VehicleInfo, { VehicleData } from './VehicleInfo';
-import ChargerSelection, { ChargerType } from './ChargerSelection';
-import ChargerLayout, { LayoutElement } from './ChargerLayout';
+import DepotLocationPanel from './components/DepotLocationPanel';
+import VehicleConfigPanel from './components/VehicleConfigPanel';
+import ChargerSelection from './components/ChargerSelection';
+import ChargerLayout from './components/ChargerLayout';
+
+// Types
+export interface VehicleData {
+  quantity: number;
+  consumption: number;
+  consumptionUnit: string;
+  bufferPercent: number;
+  dwellTime: number;
+}
+
+export interface DepotLocation {
+  lat: number;
+  lng: number;
+  address: string;
+}
+
+export interface ChargerType {
+  id: string;
+  power: number;
+  name: string;
+  type: 'AC' | 'DC';
+  connector: string;
+  typicalPrice: number;
+}
+
+export type UnitSystem = 'uk' | 'us' | 'metric-eff' | 'metric-cons';
 
 function App() {
-  const [depotLocation, setDepotLocation] = useState<{lat: number, lng: number} | null>(null);
-  const [dailyRange, setDailyRange] = useState<number>(50); // Default 50km
+  // Main state
+  const [depotLocation, setDepotLocation] = useState<DepotLocation | null>(null);
+  const [dailyRange, setDailyRange] = useState(100);
+  const [rangeUnit, setRangeUnit] = useState('miles');
+  const [currentUnits, setCurrentUnits] = useState<UnitSystem>('uk');
+  const [selectedCountry, setSelectedCountry] = useState('GB');
+  
   const [vehicleData, setVehicleData] = useState<VehicleData>({
-    quantity: 5,
-    consumption: 25, // kWh/100km - typical for electric van
+    quantity: 10,
+    consumption: 2.5,
+    consumptionUnit: 'miles/kWh',
     bufferPercent: 20,
-    dwellTime: 8 // hours
+    dwellTime: 8.0
   });
+  
   const [selectedCharger, setSelectedCharger] = useState<ChargerType | null>(null);
 
-  const handleLocationSelect = (lat: number, lng: number) => {
-    setDepotLocation({ lat, lng });
-    console.log(`Depot selected at: ${lat}, ${lng}`);
-  };
-
-  const handleVehicleDataChange = (data: VehicleData) => {
-    setVehicleData(data);
-  };
-
-  const handleChargerSelect = (charger: ChargerType) => {
-    setSelectedCharger(charger);
-  };
-
-  // Calculate minimum power per vehicle for charger validation
-  const calculateMinimumPower = (): number => {
+  // Calculate energy requirements
+  const calculateRequirements = () => {
     const vehicleDistance = dailyRange * 2;
-    const baseEnergy = (vehicleDistance * vehicleData.consumption) / 100;
-    const energyWithBuffer = baseEnergy * (1 + vehicleData.bufferPercent / 100);
-    return energyWithBuffer / vehicleData.dwellTime;
+    let energyPerVehicle: number;
+    
+    // Calculate energy based on current unit system
+    switch(currentUnits) {
+      case 'uk': // miles/kWh
+        energyPerVehicle = (vehicleDistance / vehicleData.consumption);
+        break;
+      case 'us': // kWh/100miles
+        energyPerVehicle = (vehicleDistance * vehicleData.consumption / 100);
+        break;
+      case 'metric-eff': // km/kWh
+        energyPerVehicle = (vehicleDistance / vehicleData.consumption);
+        break;
+      case 'metric-cons': // kWh/100km
+        energyPerVehicle = (vehicleDistance * vehicleData.consumption / 100);
+        break;
+    }
+    
+    // Add buffer
+    energyPerVehicle *= (1 + vehicleData.bufferPercent / 100);
+    
+    const totalFleetEnergy = energyPerVehicle * vehicleData.quantity;
+    const minimumChargingPower = energyPerVehicle / vehicleData.dwellTime;
+    
+    return {
+      vehicleDistance,
+      energyPerVehicle,
+      totalFleetEnergy,
+      minimumChargingPower
+    };
   };
+
+  const requirements = calculateRequirements();
 
   return (
-    <div className="App">
-      <header className="App-header">
+    <div className="app">
+      <header className="app-header">
         <h1>EV Charging Infrastructure Planner</h1>
-        
-        <div style={{ margin: '20px 0' }}>
-          <h2>Step 1: Select Depot Location & Daily Range</h2>
-          <p>Click on the map to set your depot location:</p>
-          
-          <div style={{ margin: '10px 0' }}>
-            <label htmlFor="dailyRange">Daily Range (km): </label>
-            <input
-              id="dailyRange"
-              type="number"
-              value={dailyRange}
-              onChange={(e) => setDailyRange(Number(e.target.value))}
-              min="1"
-              max="1000"
-              style={{ marginLeft: '10px', padding: '5px' }}
-            />
-          </div>
-        </div>
-
-        <div style={{ width: '80%', maxWidth: '800px' }}>
-          <DepotMap onLocationSelect={handleLocationSelect} dailyRange={dailyRange} />
-        </div>
-
-        <div style={{ width: '80%', maxWidth: '800px' }}>
-          <VehicleInfo 
-            vehicleData={vehicleData}
-            onVehicleDataChange={handleVehicleDataChange}
+      </header>
+      
+      <main className="app-main">
+        <div className="panels-container">
+          {/* Left Panel - Depot Location & Range */}
+          <DepotLocationPanel
+            depotLocation={depotLocation}
+            onLocationChange={setDepotLocation}
             dailyRange={dailyRange}
+            onRangeChange={setDailyRange}
+            rangeUnit={rangeUnit}
+            onRangeUnitChange={setRangeUnit}
+            currentUnits={currentUnits}
+            onUnitsChange={setCurrentUnits}
+            selectedCountry={selectedCountry}
+            onCountryChange={setSelectedCountry}
+          />
+          
+          {/* Right Panel - Vehicle Configuration */}
+          <VehicleConfigPanel
+            vehicleData={vehicleData}
+            onVehicleDataChange={setVehicleData}
+            currentUnits={currentUnits}
+            requirements={requirements}
+            rangeUnit={rangeUnit}
           />
         </div>
-
-        <div style={{ width: '80%', maxWidth: '800px' }}>
+        
+        {/* Charger Selection */}
+        {depotLocation && (
           <ChargerSelection
-            minimumPowerPerVehicle={calculateMinimumPower()}
+            minimumPowerPerVehicle={requirements.minimumChargingPower}
             vehicleQuantity={vehicleData.quantity}
             selectedCharger={selectedCharger}
-            onChargerSelect={handleChargerSelect}
+            onChargerSelect={setSelectedCharger}
           />
-        </div>
-
-        {/* Only show layout designer if depot location and charger are selected */}
+        )}
+        
+        {/* Charger Layout */}
         {depotLocation && selectedCharger && (
-          <div style={{ width: '80%', maxWidth: '800px' }}>
-            <ChargerLayout
-              depotLocation={depotLocation}
-              selectedCharger={selectedCharger}
-              vehicleQuantity={vehicleData.quantity}
-              onLayoutComplete={(elements, calculations) => {
-                console.log('Layout completed:', elements, calculations);
-              }}
-            />
-          </div>
+          <ChargerLayout
+            depotLocation={depotLocation}
+            selectedCharger={selectedCharger}
+            vehicleQuantity={vehicleData.quantity}
+            onLayoutComplete={(elements, calculations) => {
+              console.log('Layout completed:', elements, calculations);
+            }}
+          />
         )}
-
-        {depotLocation && (
-          <div style={{ marginTop: '20px', padding: '10px', border: '1px solid #ccc', borderRadius: '5px' }}>
-            <h3>Selected Depot Location:</h3>
-            <p>Latitude: {depotLocation.lat.toFixed(6)}</p>
-            <p>Longitude: {depotLocation.lng.toFixed(6)}</p>
-            <p>Daily Range: {dailyRange} km</p>
-          </div>
-        )}
-      </header>
+      </main>
     </div>
   );
 }
